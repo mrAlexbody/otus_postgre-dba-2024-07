@@ -8,18 +8,23 @@
 + научиться управлять уровнем изолции транзации в PostgreSQL и понимать особенность работы уровней read commited и repeatable read
 
 #### Создание сети в Yandex Cloud
-> yc vpc network create --name otus-net --description "otus-net"
->> id: enp6g9s9dtgu5p49drvv </br>
+````
+yc vpc network create --name otus-net --description "otus-net"
+
+id: enp6g9s9dtgu5p49drvv </br>
 folder_id: b1gdmm6es3knkn350jdo </br>
 created_at: "2024-08-11T18:48:59Z" </br>
 name: otus-net </br>
 description: otus-net </br>
 default_security_group_id: enp15ppdclbcjidfo1ml </br>
+````
 
 #### Создание подсети в Yandex Cloud
 
-> yc vpc subnet create --name otus-subnet --range 192.168.0.0/24 --network-name otus-net --description "otus-subnet"
->> id: e9bkd7fbtg29offoajl0 </br>
+````
+yc vpc subnet create --name otus-subnet --range 192.168.0.0/24 --network-name otus-net --description "otus-subnet"
+
+id: e9bkd7fbtg29offoajl0 </br>
 folder_id: b1gdmm6es3knkn350jdo </br>
 created_at: "2024-08-11T18:49:03Z" </br>
 name: otus-subnet </br>
@@ -27,18 +32,20 @@ description: otus-subnet </br>
 network_id: enp6g9s9dtgu5p49drvv </br>
 zone_id: ru-central1-a </br>
 v4_cidr_blocks: </br> - 192.168.0.0/24 </br>
+````
 
 ### Проверка 
 
- > yc vpc network list
 ````
+yc vpc network list
+
 |       ID              |   NAME   | 
 | ----------------------|----------| 
 | enp6g9s9dtgu5p49drvv  | otus-net | 
 ````
-
-> yc vpc subnet list
 ````
+ yc vpc subnet list
+
 |----------------------|-----------------------|----------------------|----------------|---------------+------------------+
 |          ID          |         NAME          |      NETWORK ID      | ROUTE TABLE ID |     ZONE      |      RANGE       |
 +----------------------+-----------------------+----------------------+----------------+---------------+------------------+
@@ -46,10 +53,10 @@ v4_cidr_blocks: </br> - 192.168.0.0/24 </br>
 +----------------------+-----------------------+----------------------+----------------+---------------+------------------+
 ````
 ### Создание инстанс виртуальной машины в Yandex CLoud c добавление своего ключа
-> PS C:\Users\Alexander> ssh-keygen.exe -t rsa -b 2048
-> 
-> yc compute instance create --name otus-vm --hostname otus-vm --cores 2 --memory 4 --create-boot-disk size=15G,type=network-hdd,image-folder-id=standard-images,image-family=ubuntu-2004-lts --network-interface subnet-name=otus-subnet,nat-ip-version=ipv4 --ssh-key C:\Users\alexbody\.ssh\yc_key.pub
 ````
+ssh-keygen.exe -t rsa -b 2048
+yc compute instance create --name otus-vm --hostname otus-vm --cores 2 --memory 4 --create-boot-disk size=15G,type=network-hdd,image-folder-id=standard-images,image-family=ubuntu-2004-lts --network-interface subnet-name=otus-subnet,nat-ip-version=ipv4 --ssh-key C:\Users\Alexander\.ssh\yc_key.pub
+
 done (40s)
 id: fhm6sm8jr1r1quk8d836
 folder_id: b1gdmm6es3knkn350jdo
