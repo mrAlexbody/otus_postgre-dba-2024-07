@@ -8,19 +8,19 @@
 + научиться управлять уровнем изоляции транзакции в PostgreSQL и понимать особенность работы уровней read commited и repeatable read
 > P.S: Для подключения используется PowerShell в Windows11
 ### Создание сети в Yandex Cloud
-````
+````shell
 PS > yc vpc network create --name otus-net --description "otus-net"
 ````
 
 ### Создание подсети в Yandex Cloud
 
-````
+````shell
 PS > yc vpc subnet create --name otus-subnet --range 192.168.0.0/24 --network-name otus-net --description "otus-subnet"
 ````
 
 #### Проверка 
 
-````
+````shell
 PS > yc vpc network list
 
 |       ID              |   NAME   | 
@@ -36,14 +36,14 @@ PS > yc vpc subnet list
 +----------------------+-----------------------+----------------------+----------------+---------------+------------------+
 ````
 #### Создание инстанс виртуальной машины в Yandex CLoud c добавление своего ключа
-````
+````shell
 PS > ssh-keygen.exe -t rsa -b 2048
 PS > yc compute instance create --name otus-vm --hostname otus-vm --cores 2 --memory 4 --create-boot-disk size=15G,type=network-hdd,image-folder-id=standard-images,image-family=ubuntu-2004-lts --network-interface subnet-name=otus-subnet,nat-ip-version=ipv4 --ssh-key C:\Users\Alexander\.ssh\yc_key.pub
 
 done (40s)
 ````
 #### Включаем SSH-агент в PowerShell и добавляем закрытый ключ в агент SSH:
-````
+````shell
 PS > Get-Service ssh-agent | Set-Service -StartupType Manual
 PS > Get-Service ssh-agent
 
@@ -60,9 +60,10 @@ Running  ssh-agent          OpenSSH Authentication Agent
 
 PS > ssh-add C:\Users\Alexander\.ssh\yc_key
 Identity added: C:\Users\Alexander\.ssh\yc_key (alexander@LAPTOP)
- ````
-#### Подключаемся в ВМ машине по SSH:
+
 ````
+#### Подключаемся в ВМ машине по SSH:
+````shell
 PS > ssh yc-user@89.169.150.222
 
 Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.4.0-190-generic x86_64)
@@ -72,13 +73,9 @@ Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.4.0-190-generic x86_64)
  * Support:        https://ubuntu.com/pro
 New release '22.04.3 LTS' available.
 Run 'do-release-upgrade' to upgrade to it.
-
-Last login: Wed Aug 14 17:48:06 2024 from 85.30.248.78
-yc-user@otus-vm:~$
-
 ````
 #### Установка PostgreSQL (ОС Ubunut Linux):
-````
+````shell
 yc-user@otus-vm:~$ sudo apt update
 yc-user@otus-vm:~$ sudo apt install postgresql
 yc-user@otus-vm:~$ sudo dpkg -l |grep postgresql
@@ -91,13 +88,15 @@ ii  postgresql-common                     214ubuntu0.1                      all 
 ````
 #### Подключение второй сессии SSH и в каждой сессии запускаем psql из-под пользователя postges
 
-````
+```shell
 yc-user@otus-vm:~$ sudo su - postgres
 postgres@otus-vm:~$ psql
+
+````
+````postgresql
 psql (12.19 (Ubuntu 12.19-0ubuntu0.20.04.1))
 Type "help" for help.
-
-postgres=#\l
+ostgres=#\l
                                   List of databases
    Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
 -----------+----------+----------+-------------+-------------+-----------------------
@@ -109,8 +108,8 @@ postgres=#\l
 (3 rows)
 
 ````
-В первой сессии создать новую таблицу и наполнить ее данными: 
-````
+#### В первой сессии создать новую таблицу и наполнить ее данными: 
+```postgresql
 create table persons(
     id serial, 
     first_name text, 
@@ -119,9 +118,9 @@ create table persons(
 insert into persons(first_name, second_name) values('ivan', 'ivanov'); 
 insert into persons(first_name, second_name) values('petr', 'petrov'); 
 commit;
-````
-Посмотрим текущий уровень изоляции: 
-````
+```
+#### Текущий уровень изоляции в БД: 
+````postgresql
 postgres=# show transaction isolation level
 postgres-# ;
  transaction_isolation
@@ -129,4 +128,45 @@ postgres-# ;
  read committed
 (1 row)
 ````
-
+#### Ноовая транзакция в обоих сессиях с дефолтным уровнем изоляции и в первую сессии добавлена запись:
+````postgresql
+postgres=# postgres=# insert into persons(first_name, second_name) values('sergey', 'sergeev');
+INSERT 0 1
+````
+#### Во второй  сессии сделаем _select * from persons_ :
+````sql
+postgres=# select * from persons;
+ id | first_name | second_name 
+----+------------+-------------
+  1 | ivan       | ivanov
+  2 | petr       | petrov
+(2 rows)
+````
+> #### Видите ли вы новую запись и если да то почему?
+>>  Нет записи, потому-что отлючен автокоммит и уровень изоляции "read committed". 
+> 
+#### Завершим первую транзакцию - commit 
+````sql
+postgres=# commit;
+COMMIT
+````
+#### и повторяем _select * from persons_ во второй сессии:
+````sql
+postgres=# commit;
+COMMIT
+postgres=# select * from persons 
+postgres-# ;
+ id | first_name | second_name 
+----+------------+-------------
+  1 | ivan       | ivanov
+  2 | petr       | petrov
+  3 | sergey     | sergeev
+(3 rows)
+````
+> #### Видите ли вы новую запись и если да то почему?
+>> Запись появилась, так как транзакция со вставкой завершилась.
+#### Завершимм транзакцию во второй сессии:
+````sql
+postgres=# commit;
+COMMIT
+````
