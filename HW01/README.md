@@ -145,7 +145,7 @@ postgres=# select * from persons;
 > #### Видите ли вы новую запись и если да то почему?
 >>  Нет записи, потому-что отлючен автокоммит и уровень изоляции "read committed". 
 > 
-#### Завершим первую транзакцию - commit 
+#### Завершим первую транзакцию - commit: 
 ````sql
 postgres=# commit;
 COMMIT
@@ -165,8 +165,64 @@ postgres-# ;
 ````
 > #### Видите ли вы новую запись и если да то почему?
 >> Запись появилась, так как транзакция со вставкой завершилась.
-#### Завершимм транзакцию во второй сессии:
+#### Завершим вторую транзакцию - commit:
 ````sql
 postgres=# commit;
 COMMIT
 ````
+#### Начнём новую транзакцию, но уже - _repeatable read_:
+````postgresql
+postgres=# set transaction isolation level repeatable read;
+SET
+````
+#### В первой сессии добавить новую запись:
+````postgresql
+postgres=# insert into persons(first_name, second_name) values('sveta', 'svetova');
+INSERT 0 1
+````
+#### Сделаем _select_ во второй сессии:
+```postgresql
+postgres=# select * from persons;
+ id | first_name | second_name 
+----+------------+-------------
+  1 | ivan       | ivanov
+  2 | petr       | petrov
+  3 | sergey     | sergeev
+(3 rows)
+```
+> Видите ли вы новую запись и если да то почему?
+>> Данных нет, так как транзакция в первой сессии ещё не завершена. 
+#### Завершим первую транзакцию:
+```postgresql
+postgres=# commit;
+COMMIT
+```
+#### Снова сделаем _select_ во второй сессии:
+```postgresql
+postgres=# select * from persons;
+ id | first_name | second_name 
+----+------------+-------------
+  1 | ivan       | ivanov
+  2 | petr       | petrov
+  3 | sergey     | sergeev
+(3 rows)
+```
+> Видите ли вы новую запись и если да то почему?
+>> Данных нет, так как включен уровень изоляции _repeatable read_ в первой сессии, поэтому данные не будут видны во второй сессии.
+#### Завершим вторую транзакцию, сделаем _select_ во второй сессии:
+```postgresql
+postgres=# commit;
+COMMIT
+postgres=# select * from persons;
+id | first_name | second_name 
+----+------------+-------------
+  1 | ivan       | ivanov
+  2 | petr       | petrov
+  3 | sergey     | sergeev
+  4 | sveta      | svetova
+(4 rows)
+```
+>Видите ли вы новую запись и если да то почему?
+>> Данные видны , так как начало новой транзакция во второй сессии позволяет увидеть все завершённые транзакции.
+
+##### The end
