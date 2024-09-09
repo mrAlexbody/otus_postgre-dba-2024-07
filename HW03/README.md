@@ -11,34 +11,33 @@
 * создайте виртуальную машину c Ubuntu 20.04/22.04 LTS в ЯО/Virtual Box/докере
 * поставьте на нее PostgreSQL 15 через sudo apt
 * проверьте что кластер запущен через sudo -u postgres pg_lsclusters
-* зайдите из под пользователя postgres в psql и сделайте произвольную таблицу с произвольным содержимым
+* зайдите из-под пользователя postgres в psql и сделайте произвольную таблицу с произвольным содержимым
 
 ````postgresql
 postgres=# create table test(c1 text);
 postgres=# insert into test values('1');
 \q
 ````
-* остановите postgres например через **sudo -u postgres pg_ctlcluster 15 main stop** 
+* остановите postgres, например, через **sudo -u postgres pg_ctlcluster 15 main stop** 
 * создайте новый диск к ВМ размером 10GB
-* добавьте свеже-созданный диск к виртуальной машине - надо зайти в режим ее редактирования и дальше выбрать пункт attach existing disk
+* добавьте свежесозданный диск к виртуальной машине - надо зайти в режим ее редактирования и дальше выбрать пункт attach existing disk
 * проинициализируйте диск согласно инструкции и подмонтировать файловую систему, только не забывайте менять имя диска на актуальное, в вашем случае это скорее всего будет **/dev/sdb** 
 <https://www.digitalocean.com/community/tutorials/how-to-partition-and-format-storage-devices-in-linux>
 * перезагрузите инстанс и убедитесь, что диск остается примонтированным (если не так смотрим в сторону fstab)
 * сделайте пользователя postgres владельцем **/mnt/data** - chown -R postgres:postgres /mnt/data/
 * перенесите содержимое **/var/lib/postgres/15** в **/mnt/data** - **mv /var/lib/postgresql/15 /mnt/data**
 * попытайтесь запустить кластер - **sudo -u postgres pg_ctlcluster 15 main start**
-* напишите получилось или нет и почему
-* задание: найти конфигурационный параметр в файлах раположенных в **/etc/postgresql/15/main** который надо поменять и поменяйте его
-* напишите что и почему поменяли
+* напишите, получилось или нет и почему
+* задание: найти конфигурационный параметр в файлах, расположенных в **/etc/postgresql/15/main**, который надо поменять и поменяйте его
+* напишите, что и почему поменяли
 * попытайтесь запустить кластер - **sudo -u postgres pg_ctlcluster 15 main start**
-* напишите получилось или нет и почему
-* зайдите через через psql и проверьте содержимое ранее созданной таблицы
+* напишите, получилось или нет и почему
+* зайдите через psql и проверьте содержимое ранее созданной таблицы
 * задание со звездочкой *: не удаляя существующий инстанс ВМ сделайте новый, поставьте на его PostgreSQL, удалите файлы с данными из **/var/lib/postgres**, перемонтируйте внешний диск который сделали ранее от первой виртуальной машины ко второй и запустите PostgreSQL на второй машине так чтобы он работал с данными на внешнем диске, расскажите как вы это сделали и что в итоге получилось.
-* те новый, поставьте на его PostgreSQL, удалите файлы с данными из **/var/lib/postgres**, перемонтируйте внешний диск который сделали ранее от первой виртуальной машины ко второй и запустите PostgreSQL на второй машине так чтобы он работал с данными на внешнем диске, расскажите как вы это сделали и что в итоге получилось.
 ----------------------------
 
- Создание виртуальной машины с UBUNTU 22.04 LTS в YandexCloud
- ```` shell
+### Создание виртуальной машины с UBUNTU 22.04 LTS в YandexCloud
+```` shell
 PS C:\Users\Alexander> yc compute instance create --name otus-db --hostname otus-db --cores 2 --memory 4 --create-boot-disk size=15G,type=
 network-hdd,image-folder-id=standard-images,image-family=ubuntu-2204-lts --network-interface subnet-name=otus-subnet,nat-ip-version=ipv4 -
 -ssh-key C:\Users\Alexander/.ssh/yc_key.pub
@@ -84,8 +83,8 @@ network_settings:
   type: STANDARD
 placement_policy: {}
 ```
-Установка БД Postgresql 15 на виртуальную машину
-Посколько Postgresql 15 нет в репозитарии пакетов по умолчанию, то нужно сделать следующие: 
+### Установка БД Postgresql 15 на виртуальную машину
+Поскольку Postgresql 15 нет в репозитарии пакетов по умолчанию, то нужно сделать следующее: 
 ```shell
  sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 ```
@@ -120,7 +119,7 @@ yc-user@otus-db:~$ sudo -u postgres pg_lsclusters
 Ver Cluster Port Status Owner    Data directory              Log file
 15  main    5432 online postgres /var/lib/postgresql/15/main /var/log/postgresql/postgresql-15-main.log
 ```
-Сделаем произвольную таблицу с произвольным содержимым
+### Сделаем произвольную таблицу с произвольным содержимым
 ```shell
 postgres=# create table test(c1 text);
 CREATE TABLE
@@ -134,7 +133,7 @@ postgres=# \dt
 (1 row)
 \q
 ```
-Остановим postgres и сразу проверим: 
+### Остановим postgres и сразу проверим: 
 ```shell
 yc-user@otus-db:~$ sudo -u postgres pg_ctlcluster 15 main stop
 Warning: stopping the cluster using pg_ctlcluster will mark the systemd unit as failed. Consider using systemctl:
@@ -147,7 +146,7 @@ yc-user@otus-db:~$ sudo -u postgres pg_lsclusters
 Ver Cluster Port Status Owner    Data directory              Log file
 15  main    5432 down   postgres /var/lib/postgresql/15/main /var/log/postgresql/postgresql-15-main.log
 ````
-Создадим новый диск на 10 ГБ и подключим его к ВМ:
+### Создадим новый диск на 10 ГБ и подключим его к ВМ:
 
 ````shell
 PS C:\Users\Alexander> yc compute disk create --name new-disk --type network-hdd --size 10 --description "second disk for otus-db"
@@ -198,7 +197,7 @@ vda                15G
 └─vda2 ext4        15G /
 vdb                10G
 ```
-Создадим разделы с помощью fdisk:
+### Создадим разделы с помощью fdisk:
 
 ```shell
 yc-user@otus-db:~$ sudo fdisk /dev/vdb
@@ -246,7 +245,7 @@ Disk identifier: 0x5dbfaf97
 Device     Boot Start      End  Sectors Size Id Type
 /dev/vdb1        2048 20971519 20969472  10G 83 Linux
 ```
-Отформатируем диск в нужную файловую систему, с помощью утилиты mkfs (файловую систему возьмем EXT4):
+Отформатируем диск в нужную файловую систему с помощью утилиты mkfs (файловую систему возьмем EXT4):
 ```shell
 yc-user@otus-db:~$ sudo mkfs.ext4 /dev/vdb1
 mke2fs 1.46.5 (30-Dec-2021)
@@ -260,7 +259,7 @@ Writing inode tables: done
 Creating journal (16384 blocks): done
 Writing superblocks and filesystem accounting information: done
 ```
-Смонтируем раздел диска vdb1 в папку /mnt/vdb1, с помощью утилиты mount и сделаем разрешение на запись всем пользователям:
+Смонтируем раздел диска vdb1 в папку /mnt/vdb1 с помощью утилиты mount и сделаем разрешение на запись всем пользователям:
 ```shell
 yc-user@otus-db:~$ sudo mkdir /mnt/vdb1
 yc-user@otus-db:~$ sudo mount /dev/vdb1 /mnt/vdb1
@@ -274,7 +273,7 @@ tmpfs           5.0M     0  5.0M   0% /run/lock
 tmpfs           392M  4.0K  392M   1% /run/user/1000
 /dev/vdb1       9.8G   24K  9.3G   1% /mnt/vdb1
 ```
-Перенесём содержимое папки /var/lib/postgres/15 на новй диск:
+Перенесём содержимое папки /var/lib/postgres/15 на новый диск:
 ```shell
 yc-user@otus-db:~$ sudo mv -vi /var/lib/postgresql/15/ /mnt/vdb1/
 ```
@@ -286,7 +285,7 @@ Warning: the cluster will not be running as a systemd service. Consider using sy
 Error: /usr/lib/postgresql/15/bin/pg_ctl /usr/lib/postgresql/15/bin/pg_ctl start -D /var/lib/postgresql/15/main -l /var/log/postgresql/postgresql-15-main.log -s -o  -c config_file="/etc/postgresql/15/main/postgresql.conf"  exited with status 1:
 pg_ctl: directory "/var/lib/postgresql/15/main" is not a database cluster directory
 ```
-> ### Напишите получилось или нет и почему, запустить кластер БД ? 
+> ### Напишите, получилось или нет и почему, запустить кластер БД ? 
 >> Запустить не удалось, так как нет данных кластера для БД Postgresql 15, а они были перенесены в другое место. 
 
 Найдём конфиг, где поменять:
@@ -367,7 +366,7 @@ yc-user@otus-db:/mnt/vdb1$ sudo ss -tlpn |grep 5432
 LISTEN 0      244        127.0.0.1:5432      0.0.0.0:*    users:(("postgres",pid=6256,fd=6))
 LISTEN 0      244            [::1]:5432         [::]:*    users:(("postgres",pid=6256,fd=5))
 ````
-> ### Напишите получилось или нет и почему!
+> ### Напишите, получилось или нет и почему!
 >> Запустить получилось кластер Postgresql 15, так как был изменён параметр "data_directory" на правильное место расположение данных. 
 
 Проверим содержимое ранее созданной таблицы:
@@ -393,6 +392,6 @@ postgres=# select * from test;
 
 ```
 >## Задание со звездочкой *: 
-> _Не удаляя существующий инстанс ВМ сделайте новый, поставьте на его PostgreSQL, удалите файлы с данными из /var/lib/postgres, перемонтируйте внешний диск который сделали ранее от первой виртуальной машины ко второй и запустите PostgreSQL на второй машине так чтобы он работал с данными на внешнем диске, расскажите как вы это сделали и что в итоге получилось.
+> _Не удаляя существующий инстанс ВМ, сделайте новый, поставьте на его PostgreSQL, удалите файлы с данными из /var/lib/postgres, перемонтируйте внешний диск который сделали ранее от первой виртуальной машины ко второй и запустите PostgreSQL на второй машине так чтобы он работал с данными на внешнем диске, расскажите как вы это сделали и что в итоге получилось.
 >_ 
-> > 
+> > 1. Отлючим ВМ и отсоеденим диск с данными 
