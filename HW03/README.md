@@ -35,7 +35,7 @@ postgres=# insert into test values('1');
 * зайдите через psql и проверьте содержимое ранее созданной таблицы
 * задание со звездочкой *: не удаляя существующий инстанс ВМ сделайте новый, поставьте на его PostgreSQL, удалите файлы с данными из **/var/lib/postgres**, перемонтируйте внешний диск который сделали ранее от первой виртуальной машины ко второй и запустите PostgreSQL на второй машине так чтобы он работал с данными на внешнем диске, расскажите как вы это сделали и что в итоге получилось.
 ----------------------------
-
+copyright: https://github.com/mrAlexbody/otus_postgre-dba-2024-07/blob/main/HW03/README.md
 ### Создание виртуальной машины с UBUNTU 22.04 LTS в YandexCloud
 ```` shell
 PS C:\Users\Alexander> yc compute instance create --name otus-db --hostname otus-db --cores 2 --memory 4 --create-boot-disk size=15G,type=

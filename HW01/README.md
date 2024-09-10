@@ -7,6 +7,8 @@
 + научиться работать в Яндекс Облаке
 + научиться управлять уровнем изоляции транзакции в PostgreSQL и понимать особенность работы уровней read commited и repeatable read
 > P.S: Для подключения используется PowerShell в Windows11
+---
+copyright: https://github.com/mrAlexbody/otus_postgre-dba-2024-07/blob/main/HW01/README.md
 ### Создание сети в Yandex Cloud
 ````shell
 PS > yc vpc network create --name otus-net --description "otus-net"
