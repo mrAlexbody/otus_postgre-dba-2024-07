@@ -395,3 +395,277 @@ postgres=# select * from test;
 > _Не удаляя существующий инстанс ВМ, сделайте новый, поставьте на его PostgreSQL, удалите файлы с данными из /var/lib/postgres, перемонтируйте внешний диск который сделали ранее от первой виртуальной машины ко второй и запустите PostgreSQL на второй машине так чтобы он работал с данными на внешнем диске, расскажите как вы это сделали и что в итоге получилось.
 >_ 
 > > 1. Отлючим ВМ и отсоеденим диск с данными 
+> > 2. Далеее описание действий:
+> 
+> 
+-----
+>>  2.1. Установим 2-ую ВМ
+```shell
+PS C:\Users\Alexander> yc compute instance create --name otus-vm --hostname otus-vm --cores 2 --memory 4 --create-boot-disk size=15G,type=network-hdd,image-folder-id=standard-images,image-family=ubuntu-2204-lts --network-interface subnet-name=otus-subnet,nat-ip-version=ipv4 --ssh-key C:\Users\Alexander/.ssh/id_rsa.pub
+done (52s)
+id: fhmpjlt2fqaga6vqhsi0
+folder_id: b1gdmm6es3knkn350jdo
+created_at: "2024-10-08T12:21:39Z"
+name: otus-vm
+zone_id: ru-central1-a
+platform_id: standard-v2
+resources:
+  memory: "4294967296"
+  cores: "2"
+  core_fraction: "100"
+status: RUNNING
+metadata_options:
+  gce_http_endpoint: ENABLED
+  aws_v1_http_endpoint: ENABLED
+  gce_http_token: ENABLED
+  aws_v1_http_token: DISABLED
+boot_disk:
+  mode: READ_WRITE
+  device_name: fhmaj7ncv1obfnjntpvg
+  auto_delete: true
+  disk_id: fhmaj7ncv1obfnjntpvg
+network_interfaces:
+  - index: "0"
+    mac_address: d0:0d:19:9d:7a:27
+    subnet_id: e9bbp2c51jd655n334rk
+    primary_v4_address:
+      address: 192.168.100.12
+      one_to_one_nat:
+        address: 89.169.150.111
+        ip_version: IPV4
+serial_port_settings:
+  ssh_authorization: OS_LOGIN
+gpu_settings: {}
+fqdn: otus-vm.ru-central1.internal
+scheduling_policy: {}
+network_settings:
+  type: STANDARD
+placement_policy: {}
+
+PPS C:\Users\Alexander> yc compute instance list
++----------------------+---------+---------------+---------+----------------+----------------+
+|          ID          |  NAME   |    ZONE ID    | STATUS  |  EXTERNAL IP   |  INTERNAL IP   |
++----------------------+---------+---------------+---------+----------------+----------------+
+| fhmdbi854jp4opdmjaqn | otus-db | ru-central1-a | STOPPED |                | 192.168.100.35 |
+| fhmpjlt2fqaga6vqhsi0 | otus-vm | ru-central1-a | RUNNING | 89.169.150.111 | 192.168.100.12 |
++----------------------+---------+---------------+---------+----------------+----------------+
+
+PS C:\Users\Alexander> yc compute disk list
++----------------------+-------------+-------------+---------------+--------+----------------------+-----------------+-------------------------+
+|          ID          |    NAME     |    SIZE     |     ZONE      | STATUS |     INSTANCE IDS     | PLACEMENT GROUP |       DESCRIPTION       |
++----------------------+-------------+-------------+---------------+--------+----------------------+-----------------+-------------------------+
+| fhm8ttbolbqbbkp3g2lj | new-disk    | 10737418240 | ru-central1-a | READY  |                      |                 | second disk for otus-db |
+| fhmaj7ncv1obfnjntpvg |             | 16106127360 | ru-central1-a | READY  | fhmpjlt2fqaga6vqhsi0 |                 |                         |
+| fhmmt557edn7tfocqd7a |             | 16106127360 | ru-central1-a | READY  | fhmdbi854jp4opdmjaqn |                 |                         |
+| fhmposveic73o1rimkqg | otus-hdd-db | 10737418240 | ru-central1-a | READY  |                      |                 |                         |
++----------------------+-------------+-------------+---------------+--------+----------------------+-----------------+-------------------------+
+```
+>> 2.2. Подключим диск:
+```shell
+PS C:\Users\Alexander> yc compute instance attach-disk --name otus-vm --disk-name new-disk
+done (15s)
+id: fhmpjlt2fqaga6vqhsi0
+folder_id: b1gdmm6es3knkn350jdo
+created_at: "2024-08-30T06:47:17Z"
+name: otus-vm
+zone_id: ru-central1-a
+platform_id: standard-v2
+resources:
+  memory: "4294967296"
+  cores: "2"
+  core_fraction: "100"
+status: RUNNING
+metadata_options:
+  gce_http_endpoint: ENABLED
+  aws_v1_http_endpoint: ENABLED
+  gce_http_token: ENABLED
+  aws_v1_http_token: DISABLED
+boot_disk:
+  mode: READ_WRITE
+  device_name: fhmaj7ncv1obfnjntpvg
+  auto_delete: true
+  disk_id: fhmaj7ncv1obfnjntpvg
+secondary_disks:
+  - mode: READ_WRITE
+    device_name: fhm8ttbolbqbbkp3g2lj
+    disk_id: fhm8ttbolbqbbkp3g2lj
+network_interfaces:
+  - index: "0"
+    mac_address: d0:0d:19:9d:7a:27
+    subnet_id: e9bbp2c51jd655n334rk
+    primary_v4_address:
+      address: 192.168.100.12
+      one_to_one_nat:
+        address: 89.169.150.111
+        ip_version: IPV4
+serial_port_settings:
+  ssh_authorization: OS_LOGIN
+gpu_settings: {}
+fqdn: otus-vm.ru-central1.internal
+scheduling_policy: {}
+network_settings:
+  type: STANDARD
+placement_policy: {}
+```
+>> 2.3. Подключаемся к ВМ и монтируем диск в системе в **/mnt/data**:
+```shell
+yc-user@otus-vm:~$ sudo fdisk -l
+.....
+Device     Boot Start      End  Sectors Size Id Type
+/dev/vdb1        2048 20971519 20969472  10G 83 Linux
+yc-user@otus-vm:~$ sudo lsblk -l
+NAME  MAJ:MIN RM   SIZE RO TYPE MOUNTPOINTS
+loop0   7:0    0  63.3M  1 loop /snap/core20/1822
+loop1   7:1    0  63.9M  1 loop /snap/core20/2318
+loop2   7:2    0 111.9M  1 loop /snap/lxd/24322
+loop3   7:3    0    87M  1 loop /snap/lxd/29351
+loop4   7:4    0  49.8M  1 loop /snap/snapd/18357
+loop5   7:5    0  38.8M  1 loop /snap/snapd/21759
+vda   252:0    0    15G  0 disk
+vda1  252:1    0     1M  0 part
+vda2  252:2    0    15G  0 part /
+vdb   252:16   0    10G  0 disk
+vdb1  252:17   0    10G  0 part
+
+yc-user@otus-vm:~$ sudo mkdir /mnt/data
+yc-user@otus-vm:~$ sudo chmod a+w /mnt/data
+yc-user@otus-vm:~$ sudo mount /dev/vdb1 /mnt/data
+yc-user@otus-vm:~$ ls -la /mnt/data
+total 28
+drwxrwxrwx 4 root root  4096 Sep  8 20:06 .
+drwxr-xr-x 3 root root  4096 Sep 10 09:41 ..
+drwxr-xr-x 3  114  120  4096 Sep  8 19:05 15
+drwx------ 2 root root 16384 Sep  8 20:01 lost+found
+
+yc-user@otus-vm:~$ ls -la /dev/disk/by-uuid/
+total 0
+drwxr-xr-x 2 root root  80 Sep 10 09:36 .
+drwxr-xr-x 6 root root 120 Sep 10 09:22 ..
+lrwxrwxrwx 1 root root  10 Sep 10 09:36 37dfcffe-80fe-42d5-a7fc-e57e7370acf8 -> ../../vdb1
+lrwxrwxrwx 1 root root  10 Sep 10 09:23 ed465c6e-049a-41c6-8e0b-c8da348a3577 -> ../../vda2
+yc-user@otus-vm:~$ sudo nano /etc/fstab
+yc-user@otus-vm:~$ cat /etc/fstab
+# /etc/fstab: static file system information.
+#
+# Use 'blkid' to print the universally unique identifier for a
+# device; this may be used with UUID= as a more robust way to name devices
+# that works even if disks are added and removed. See fstab(5).
+#
+# <file system> <mount point>   <type>  <options>       <dump>  <pass>
+# / was on /dev/vda2 during curtin installation
+/dev/disk/by-uuid/ed465c6e-049a-41c6-8e0b-c8da348a3577 / ext4 defaults 0 1
+/dev/disk/by-uuid/37dfcffe-80fe-42d5-a7fc-e57e7370acf8 /mnt/data ext4 defaults 0 1
+
+```
+>> 2.4. Установим Postgresql:
+```shell
+yc-user@otus-vm:~$ sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+yc-user@otus-vm:~$ wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt/trusted.gpg.d/pgdg.asc &>/dev/null
+yc-user@otus-vm:~$ sudo apt update -y
+yc-user@otus-vm:~$ sudo apt install -y postgresql-15
+```
+>> 2.5. Удалим файлы с данными из **/var/lib/postgres**:
+```shell
+yc-user@otus-vm:~$ pg_lsclusters
+Ver Cluster Port Status Owner    Data directory              Log file
+15  main    5432 down   postgres /var/lib/postgresql/15/main /var/log/postgresql/postgresql-15-main.log
+yc-user@otus-vm:~$ sudo rm -rf /var/lib/postgresql/*
+yc-user@otus-vm:~$ ls -la  /var/lib/postgresql/
+total 8
+drwxr-xr-x  2 postgres postgres 4096 Sep 10 09:59 .
+drwxr-xr-x 43 root     root     4096 Aug 30 08:09 ..
+```
+>> 2.6. Изменим конфиг и запустим Postgresql так, что-бы заработал: 
+```shell
+yc-user@otus-vm:~$ sudo -u postgres pg_conftool 15 main show all
+cluster_name = '15/main'
+data_directory = '/var/lib/postgresql/15/main'
+datestyle = 'iso, mdy'
+default_text_search_config = 'pg_catalog.english'
+dynamic_shared_memory_type = posix
+external_pid_file = '/var/run/postgresql/15-main.pid'
+hba_file = '/etc/postgresql/15/main/pg_hba.conf'
+ident_file = '/etc/postgresql/15/main/pg_ident.conf'
+lc_messages = 'en_US.UTF-8'
+lc_monetary = 'en_US.UTF-8'
+lc_numeric = 'en_US.UTF-8'
+lc_time = 'en_US.UTF-8'
+log_line_prefix = '%m [%p] %q%u@%d '
+log_timezone = 'Etc/UTC'
+max_connections = 100
+max_wal_size = 1GB
+min_wal_size = 80MB
+port = 5432
+shared_buffers = 128MB
+ssl = on
+ssl_cert_file = '/etc/ssl/certs/ssl-cert-snakeoil.pem'
+ssl_key_file = '/etc/ssl/private/ssl-cert-snakeoil.key'
+timezone = 'Etc/UTC'
+unix_socket_directories = '/var/run/postgresql'
+
+yc-user@otus-vm:~$ sudo -u postgres pg_conftool 15 main set data_directory /mnt/data/15/main
+
+yc-user@otus-vm:~$ sudo -u postgres pg_conftool 15 main show all
+cluster_name = '15/main'
+data_directory = '/mnt/data/15/main'
+datestyle = 'iso, mdy'
+default_text_search_config = 'pg_catalog.english'
+dynamic_shared_memory_type = posix
+external_pid_file = '/var/run/postgresql/15-main.pid'
+hba_file = '/etc/postgresql/15/main/pg_hba.conf'
+ident_file = '/etc/postgresql/15/main/pg_ident.conf'
+lc_messages = 'en_US.UTF-8'
+lc_monetary = 'en_US.UTF-8'
+lc_numeric = 'en_US.UTF-8'
+lc_time = 'en_US.UTF-8'
+log_line_prefix = '%m [%p] %q%u@%d '
+log_timezone = 'Etc/UTC'
+max_connections = 100
+max_wal_size = 1GB
+min_wal_size = 80MB
+port = 5432
+shared_buffers = 128MB
+ssl = on
+ssl_cert_file = '/etc/ssl/certs/ssl-cert-snakeoil.pem'
+ssl_key_file = '/etc/ssl/private/ssl-cert-snakeoil.key'
+timezone = 'Etc/UTC'
+unix_socket_directories = '/var/run/postgresql'
+```
+>> 2.7. Стартуем и проверяем: 
+```shell
+yc-user@otus-vm:~$ sudo -u postgres pg_ctlcluster 15 main start
+Warning: the cluster will not be running as a systemd service. Consider using systemctl:
+  sudo systemctl start postgresql@15-main
+yc-user@otus-vm:~$ pg_lsclusters
+Ver Cluster Port Status Owner    Data directory    Log file
+15  main    5432 online postgres /mnt/data/15/main /var/log/postgresql/postgresql-15-main.log
+yc-user@otus-vm:~$ sudo -u postgres psql
+````
+```postgresql
+psql (16.4 (Ubuntu 16.4-1.pgdg22.04+1), server 15.8 (Ubuntu 15.8-1.pgdg22.04+1))
+Type "help" for help.
+postgres=# \l
+                                                       List of databases
+   Name    |  Owner   | Encoding | Locale Provider |   Collate   |    Ctype    | ICU Locale | ICU Rules |   Access privileges
+-----------+----------+----------+-----------------+-------------+-------------+------------+-----------+-----------------------
+ postgres  | postgres | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |            |           |
+ template0 | postgres | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |            |           | =c/postgres          +
+           |          |          |                 |             |             |            |           | postgres=CTc/postgres
+ template1 | postgres | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |            |           | =c/postgres          +
+           |          |          |                 |             |             |            |           | postgres=CTc/postgres
+(3 rows)
+
+postgres=# select * from test;
+ c1
+----
+ 1
+(1 row)
+
+postgres=# \dt
+        List of relations
+ Schema | Name | Type  |  Owner
+--------+------+-------+----------
+ public | test | table | postgres
+(1 row)
+```
+>> **Всё ОК !!!**  
