@@ -69,7 +69,7 @@ create table t3(c1 integer); insert into t2 values (2);
 ```
 42. Расскажите что получилось и почему
 -----------
-copyright: https://github.com/mrAlexbody/otus_postgre-dba-2024-07/blob/main/HW04/README.md
+copyright: <img src="https://github.com/mrAlexbody/otus_postgre-dba-2024-07/blob/main/HW03/img.png"> https://github.com/mrAlexbody/otus_postgre-dba-2024-07/blob/main/HW04/README.md
 #### Создадим новый кластер **Postresql 14**:
 ```shell
 
