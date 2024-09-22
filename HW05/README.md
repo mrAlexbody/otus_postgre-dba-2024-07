@@ -399,6 +399,7 @@ testdb=# SELECT pg_size_pretty(pg_table_size('t1'));
 >> Потому-что при UPDATE запись с начало удаляется (делается delete) в таблице, а потом добавляется новая запись (делается insert). 
 > > Так как AUTOVACUUM отключён, чистить таблицы некому, а так же нет сбора статистики о распределении данных. 
 > > Появляются мусорные данные и таблица растёт в размерах.
+
 Включим AUTOVACUUM: 
 ```postgresql
 testdb=# ALTER TABLE t1 SET (autovacuum_enabled = on);
