@@ -417,7 +417,8 @@ testdb=# SELECT relname, n_live_tup, n_dead_tup, trunc(100*n_dead_tup/(n_live_tu
 > > testdb=# CREATE PROCEDURE procedure_update_data() AS $$
 > >BEGIN
 > >  FOR t IN 1..10 LOOP
-> >    UPDATE t1 SET i = random()::TEXT || 'autovacuum';
+> >    UPDATE t1 SET i = random()::TEXT || 'autovacuum'; 
+> >    RAISE NOTICE 'STEP %', t;
 > >  END LOOP;
 > >END;
 > >$$ LANGUAGE plpgsql;
