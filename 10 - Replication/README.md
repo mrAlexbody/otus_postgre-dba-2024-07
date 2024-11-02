@@ -222,3 +222,8 @@ otus_db=# select * from test;
        
 otus_db=# create publication test2_pub for table test2;
 ```
+На 3 ВМ просто сделаем подписки: 
+```shell
+otus_db=# create subscription test13_sub connection 'host=192.168.100.17 port=5432 user=postgres password=postgres dbname=otus_db' publication test1_pub;
+otus_db=# create subscription test23_sub connection 'host=192.168.100.8 port=5432 user=postgres password=postgres dbname=otus_db' publication test2_pub;
+```
