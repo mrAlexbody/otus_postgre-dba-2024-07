@@ -94,22 +94,22 @@ You are now connected to database "otus_db" as user "postgres".
 otus_db=# CREATE TABLE test AS SELECT generate_series(1, 10) AS id, md5(random()::text)::char(100) AS fio;
 CREATE TABLE
 
-    otus_db=# CREATE TABLE test2  (id SERIAL PRIMARY KEY, fio char(100));
+otus_db=# CREATE TABLE test2  (id SERIAL PRIMARY KEY, fio char(100));
 CREATE TABLE
 
-otus_db=# select * from test;
- id |    fio
-----+------------
-  1 | 671acc6628
-  2 | b3713873d8
-  3 | 4633efbe5d
-  4 | 49478e2c9c
-  5 | 6909c3763c
-  6 | fffc446f0c
-  7 | f205b8173f
-  8 | 8676fc1522
-  9 | 6cd1863ca1
- 10 | 958e96d92a
+otus_db=# SELECT * FROM test;
+  id |                                                 fio
+----+------------------------------------------------------------------------------------------------------
+  1 | d20548f8cc92acd196f8e4af49352124
+  2 | dfef47531caa952a2fc87b7964b3655f
+  3 | 15417bfdab1be36583b1f1eb7e96211e
+  4 | 626ab7e1cf261e27d0a3ceb5e74f0368
+  5 | 60e6a0c021f2604bf9d08c8c079b596f
+  6 | 5a0a4cf12b0e90ac9e1ebbea19700788
+  7 | 6acd6b46c7892ed85f09a1c6d4e81582
+  8 | 7e55ac7c30ede484237d858fa13fb95e
+  9 | 4dd9f245eb2da094affaf5c008a2e5ff
+ 10 | 5419f552511f67afe71458a7e9607c9e
 (10 rows)
 
 ```
@@ -205,19 +205,19 @@ otus_db=# \dRs+
  test1_sub | postgres | t       | {test1_pub} | f      | f         | off                | host=192.168.100.17 port=5432 user=postgres password=postgres dbname=otus_db
 (1 row)
 
-otus_db=# select * from test;
- id |    fio
-----+------------
-  1 | 671acc6628
-  2 | b3713873d8
-  3 | 4633efbe5d
-  4 | 49478e2c9c
-  5 | 6909c3763c
-  6 | fffc446f0c
-  7 | f205b8173f
-  8 | 8676fc1522
-  9 | 6cd1863ca1
- 10 | 958e96d92a
+otus_db=# SELECT * FROM test;
+  id |                                                 fio
+----+------------------------------------------------------------------------------------------------------
+  1 | d20548f8cc92acd196f8e4af49352124
+  2 | dfef47531caa952a2fc87b7964b3655f
+  3 | 15417bfdab1be36583b1f1eb7e96211e
+  4 | 626ab7e1cf261e27d0a3ceb5e74f0368
+  5 | 60e6a0c021f2604bf9d08c8c079b596f
+  6 | 5a0a4cf12b0e90ac9e1ebbea19700788
+  7 | 6acd6b46c7892ed85f09a1c6d4e81582
+  8 | 7e55ac7c30ede484237d858fa13fb95e
+  9 | 4dd9f245eb2da094affaf5c008a2e5ff
+ 10 | 5419f552511f67afe71458a7e9607c9e
 (10 rows)
        
 otus_db=# create publication test2_pub for table test2;
@@ -226,6 +226,45 @@ otus_db=# create publication test2_pub for table test2;
 ```postgresql
 otus_db=# CREATE TABLE test  (id SERIAL PRIMARY KEY, fio char(100));
 otus_db=# CREATE TABLE test2  (id SERIAL PRIMARY KEY, fio char(100));
+
 otus_db=# CREATE  SUBSCRIPTION test13_sub CONNECTION 'host=192.168.100.17 port=5432 user=postgres password=postgres dbname=otus_db' PUBLICATION test1_pub;
 otus_db=# CREATE SUBSCRIPTION test23_sub CONNECTION 'host=192.168.100.8 port=5432 user=postgres password=postgres dbname=otus_db' PUBLICATION test2_pub;
+
+otus_db=# \dRs
+             List of subscriptions
+    Name    |  Owner   | Enabled | Publication
+------------+----------+---------+-------------
+ test13_sub | postgres | t       | {test1_pub}
+ test23_sub | postgres | t       | {test2_pub}
+(2 rows)
+
+otus_db=# SELECT * FROM test;
+ id |                                                 fio
+----+------------------------------------------------------------------------------------------------------
+  1 | d20548f8cc92acd196f8e4af49352124
+  2 | dfef47531caa952a2fc87b7964b3655f
+  3 | 15417bfdab1be36583b1f1eb7e96211e
+  4 | 626ab7e1cf261e27d0a3ceb5e74f0368
+  5 | 60e6a0c021f2604bf9d08c8c079b596f
+  6 | 5a0a4cf12b0e90ac9e1ebbea19700788
+  7 | 6acd6b46c7892ed85f09a1c6d4e81582
+  8 | 7e55ac7c30ede484237d858fa13fb95e
+  9 | 4dd9f245eb2da094affaf5c008a2e5ff
+ 10 | 5419f552511f67afe71458a7e9607c9e
+(10 rows)
+
+otus_db=# SELECT * FROM test2;
+ id |                                                 fio
+----+------------------------------------------------------------------------------------------------------
+  1 | 2bcc8c62aa
+  2 | d1ee349038
+  3 | a1f77f2090
+  4 | 7b2573341f
+  5 | 06f169f15b
+  6 | 9a1e54a8a5
+  7 | 5d6c70ba50
+  8 | e4fb503bfe
+  9 | 3e9ed06a51
+ 10 | ce33f84584
+(10 rows)
 ```
