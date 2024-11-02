@@ -91,7 +91,7 @@ postgres=# \l
 postgres=# \c otus_db
 You are now connected to database "otus_db" as user "postgres".
 
-otus_db=# CREATE TABLE test AS SELECT generate_series(1, 10) AS id, md5(random()::text)::char(10) AS fio;
+otus_db=# CREATE TABLE test AS SELECT generate_series(1, 10) AS id, md5(random()::text)::char(100) AS fio;
 CREATE TABLE
 
     otus_db=# CREATE TABLE test2  (id SERIAL PRIMARY KEY, fio char(100));
@@ -125,7 +125,7 @@ postgres=# \l
 postgres=# \c otus_db
 You are now connected to database "otus_db" as user "postgres".
 
-otus_db=# CREATE TABLE test2 AS SELECT generate_series(1, 10) AS id, md5(random()::text)::char(10) AS fio;
+otus_db=# CREATE TABLE test2 AS SELECT generate_series(1, 10) AS id, md5(random()::text)::char(100) AS fio;
 CREATE TABLE
 
 otus_db=# CREATE TABLE test  (id SERIAL PRIMARY KEY, fio char(100));
@@ -223,7 +223,9 @@ otus_db=# select * from test;
 otus_db=# create publication test2_pub for table test2;
 ```
 На 3 ВМ просто сделаем подписки: 
-```shell
-otus_db=# create subscription test13_sub connection 'host=192.168.100.17 port=5432 user=postgres password=postgres dbname=otus_db' publication test1_pub;
-otus_db=# create subscription test23_sub connection 'host=192.168.100.8 port=5432 user=postgres password=postgres dbname=otus_db' publication test2_pub;
+```postgresql
+otus_db=# CREATE TABLE test  (id SERIAL PRIMARY KEY, fio char(100));
+otus_db=# CREATE TABLE test2  (id SERIAL PRIMARY KEY, fio char(100));
+otus_db=# CREATE  SUBSCRIPTION test13_sub CONNECTION 'host=192.168.100.17 port=5432 user=postgres password=postgres dbname=otus_db' PUBLICATION test1_pub;
+otus_db=# CREATE SUBSCRIPTION test23_sub CONNECTION 'host=192.168.100.8 port=5432 user=postgres password=postgres dbname=otus_db' PUBLICATION test2_pub;
 ```
