@@ -272,3 +272,150 @@ otus_db=# SELECT * FROM test2;
  10 | ce33f84584
 (10 rows)
 ```
+#### * реализовать горячее реплицирование для высокой доступности на 4ВМ. Источником должна выступать ВМ №3. Написать с какими проблемами столкнулись.
+```shell
+yc-user@db-04:~$ sudo apt install postgresql
+yc-user@db-04:~$ sudo -i -u postgres bash
+postgres@db-04:~$ pg_lsclusters
+Ver Cluster Port Status Owner    Data directory              Log file
+14  main    5432 online postgres /var/lib/postgresql/14/main /var/log/postgresql/postgresql-14-main.log
+
+root@db-04:~# sudo systemctl stop postgresql@14-main
+root@db-04:~#  pg_lsclusters
+Ver Cluster Port Status Owner    Data directory              Log file
+14  main    5432 down   postgres /var/lib/postgresql/14/main /var/log/postgresql/postgresql-14-main.log
+
+root@db-04:~# rm -rf /var/lib/postgresql/14/main/*
+root@db-04:/var/lib/postgresql/14/main# ls -la
+total 8
+drwx------ 2 postgres postgres 4096 Nov  4 12:50 .
+drwxr-xr-x 3 postgres postgres 4096 Nov  4 12:42 ..
+root@db-04:/var/lib/postgresql/14/main# exit
+logout
+yc-user@db-04:~$ sudo -i -u postgres bash
+postgres@db-04:~$ ls -la /var/lib/postgresql/14/main
+total 8
+drwx------ 2 postgres postgres 4096 Nov  4 12:50 .
+drwxr-xr-x 3 postgres postgres 4096 Nov  4 12:42 ..
+postgres@db-04:~$ pg_basebackup -R -D  /var/lib/postgresql/14/main -h 192.168.100.30 -W
+Password:
+postgres@db-04:~$ pg_lsclusters
+Ver Cluster Port Status        Owner    Data directory              Log file
+14  main    5432 down,recovery postgres /var/lib/postgresql/14/main /var/log/postgresql/postgresql-14-main.log
+postgres@db-04:~$ exit
+exit
+yc-user@db-04:~$ sudo -i
+root@db-04:~#  sudo systemctl start postgresql@14-main
+root@db-04:~#  sudo systemctl status postgresql@14-main
+● postgresql@14-main.service - PostgreSQL Cluster 14-main
+     Loaded: loaded (/lib/systemd/system/postgresql@.service; enabled-runtime; vendor preset: enabled)
+     Active: active (running) since Mon 2024-11-04 12:53:04 UTC; 10s ago
+    Process: 3873 ExecStart=/usr/bin/pg_ctlcluster --skip-systemctl-redirect 14-main start (code=exited, status=0/SUCCESS)
+   Main PID: 3878 (postgres)
+      Tasks: 6 (limit: 4564)
+     Memory: 33.8M
+        CPU: 198ms
+     CGroup: /system.slice/system-postgresql.slice/postgresql@14-main.service
+             ├─3878 /usr/lib/postgresql/14/bin/postgres -D /var/lib/postgresql/14/main -c config_file=/etc/postgresql/14/main/postgresql.conf
+             ├─3879 "postgres: 14/main: startup recovering 000000010000000000000003" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+             ├─3880 "postgres: 14/main: checkpointer " "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "">
+             ├─3881 "postgres: 14/main: background writer " "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" >
+             ├─3882 "postgres: 14/main: stats collector " "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "">
+             └─3883 "postgres: 14/main: walreceiver streaming 0/3000060" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+
+Nov 04 12:53:02 db-04 systemd[1]: Starting PostgreSQL Cluster 14-main...
+Nov 04 12:53:04 db-04 systemd[1]: Started PostgreSQL Cluster 14-main.
+root@db-04:~# pg_lsclusters
+Ver Cluster Port Status          Owner    Data directory              Log file
+14  main    5432 online,recovery postgres /var/lib/postgresql/14/main /var/log/postgresql/postgresql-14-main.log
+```
+Проверим на 4ВМ:
+```postgresql
+yc-user@db-04:~$ sudo -i -u postgres psql
+psql (14.13 (Ubuntu 14.13-0ubuntu0.22.04.1))
+Type "help" for help.
+
+postgres-# \l
+                                  List of databases
+   Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
+-----------+----------+----------+-------------+-------------+-----------------------
+ otus_db   | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+ postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+ template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+(4 rows)
+
+postgres-# \c otus_db
+You are now connected to database "otus_db" as user "postgres".
+otus_db-# \dt
+         List of relations
+ Schema | Name  | Type  |  Owner
+--------+-------+-------+----------
+ public | test  | table | postgres
+ public | test2 | table | postgres
+(2 rows)
+
+otus_db=# SELECT * FROM test;
+ id |                                                 fio
+----+------------------------------------------------------------------------------------------------------
+  1 | d20548f8cc92acd196f8e4af49352124
+  2 | dfef47531caa952a2fc87b7964b3655f
+  3 | 15417bfdab1be36583b1f1eb7e96211e
+  4 | 626ab7e1cf261e27d0a3ceb5e74f0368
+  5 | 60e6a0c021f2604bf9d08c8c079b596f
+  6 | 5a0a4cf12b0e90ac9e1ebbea19700788
+  7 | 6acd6b46c7892ed85f09a1c6d4e81582
+  8 | 7e55ac7c30ede484237d858fa13fb95e
+  9 | 4dd9f245eb2da094affaf5c008a2e5ff
+ 10 | 5419f552511f67afe71458a7e9607c9e
+(10 rows)
+
+otus_db=# SELECT * FROM test2;
+ id |                                                 fio
+----+------------------------------------------------------------------------------------------------------
+  1 | 2bcc8c62aa
+  2 | d1ee349038
+  3 | a1f77f2090
+  4 | 7b2573341f
+  5 | 06f169f15b
+  6 | 9a1e54a8a5
+  7 | 5d6c70ba50
+  8 | e4fb503bfe
+  9 | 3e9ed06a51
+ 10 | ce33f84584
+(10 rows)
+                        
+```
+Проверим на 3ВМ:
+```postgresql
+yc-user@db-03:~$ sudo -i -u postgres psql
+psql (14.13 (Ubuntu 14.13-0ubuntu0.22.04.1))
+Type "help" for help.
+
+postgres=# SELECT * FROM pg_stat_replication \gx
+-[ RECORD 1 ]----+------------------------------
+pid              | 1321
+usesysid         | 10
+usename          | postgres
+application_name | 14/main
+client_addr      | 192.168.100.26
+client_hostname  |
+client_port      | 38998
+backend_start    | 2024-11-04 12:53:02.68543+00
+backend_xmin     |
+state            | streaming
+sent_lsn         | 0/3000148
+write_lsn        | 0/3000148
+flush_lsn        | 0/3000148
+replay_lsn       | 0/3000148
+write_lag        |
+flush_lag        |
+replay_lag       |
+sync_priority    | 0
+sync_state       | async
+reply_time       | 2024-11-04 12:56:25.169043+00
+
+postgres=#
+```
