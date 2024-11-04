@@ -23,17 +23,21 @@ C:\>yc vpc subnet create --name otus-subnet --range 192.168.100.0/24 --network-n
 ```shell
 C:\>yc compute instance create --name db-01 --hostname db-01 --cores 2 --memory 4 --create-boot-disk size=15G,type=network-hdd,image-folder-id=standard-images,image-family=ubuntu-2204-lts --network-interface subnet-name=otus-subnet,nat-ip-version=ipv4 --ssh-key C:\Users\Alexander/.ssh/yc_key.pub
 done (41s)
-C:\>yc compute instance create --name db-02 --hostname db-01 --cores 2 --memory 4 --create-boot-disk size=15G,type=network-hdd,image-folder-id=standard-images,image-family=ubuntu-2204-lts --network-interface subnet-name=otus-subnet,nat-ip-version=ipv4 --ssh-key C:\Users\Alexander/.ssh/yc_key.pub
+C:\>yc compute instance create --name db-02 --hostname db-02 --cores 2 --memory 4 --create-boot-disk size=15G,type=network-hdd,image-folder-id=standard-images,image-family=ubuntu-2204-lts --network-interface subnet-name=otus-subnet,nat-ip-version=ipv4 --ssh-key C:\Users\Alexander/.ssh/yc_key.pub
 done (41s)
-C:\>yc compute instance create --name db-03 --hostname db-01 --cores 2 --memory 4 --create-boot-disk size=15G,type=network-hdd,image-folder-id=standard-images,image-family=ubuntu-2204-lts --network-interface subnet-name=otus-subnet,nat-ip-version=ipv4 --ssh-key C:\Users\Alexander/.ssh/yc_key.pub
+C:\>yc compute instance create --name db-03 --hostname db-03 --cores 2 --memory 4 --create-boot-disk size=15G,type=network-hdd,image-folder-id=standard-images,image-family=ubuntu-2204-lts --network-interface subnet-name=otus-subnet,nat-ip-version=ipv4 --ssh-key C:\Users\Alexander/.ssh/yc_key.pub
 done (41s)
+C:\>yc compute instance create --name db-04 --hostname db-04 --cores 2 --memory 4 --create-boot-disk size=15G,type=network-hdd,image-folder-id=standard-images,image-family=ubuntu-2204-lts --network-interface subnet-name=otus-subnet,nat-ip-version=ipv4 --ssh-key C:\Users\Alexander/.ssh/yc_key.pub
+done (36s)
+
 C:\>yc compute instances list
 +----------------------+-------+---------------+---------+----------------+----------------+
 |          ID          | NAME  |    ZONE ID    | STATUS  |  EXTERNAL IP   |  INTERNAL IP   |
 +----------------------+-------+---------------+---------+----------------+----------------+
-| fhm0gu479bf2ffjtv1iv | db-03 | ru-central1-a | RUNNING | 89.169.143.51  | 192.168.100.30 |
-| fhm8r5hpohfba63l91ht | db-02 | ru-central1-a | RUNNING | 51.250.74.163  | 192.168.100.8  |
-| fhmvdijccvfbhlvedmij | db-01 | ru-central1-a | RUNNING | 89.169.155.100 | 192.168.100.17 |
+| fhm0gu479bf2ffjtv1iv | db-03 | ru-central1-a | RUNNING | 89.169.134.110 | 192.168.100.30 |
+| fhm8r5hpohfba63l91ht | db-02 | ru-central1-a | RUNNING | 89.169.158.97  | 192.168.100.8  |
+| fhmqu1t2chr1v4n12v39 | db-04 | ru-central1-a | RUNNING | 89.169.138.16  | 192.168.100.26 |
+| fhmvdijccvfbhlvedmij | db-01 | ru-central1-a | RUNNING | 89.169.140.41  | 192.168.100.17 |
 +----------------------+-------+---------------+---------+----------------+----------------+
 
 ```
