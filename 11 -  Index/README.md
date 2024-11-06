@@ -207,4 +207,17 @@ otus=# EXPLAIN ANALYZE SELECT * FROM public.user WHERE id <= 1000 AND surname = 
  Planning Time: 0.871 ms
  Execution Time: 0.023 ms
 (5 строк)
+                                                        
+otus=# EXPLAIN ANALYZE SELECT * FROM public.user WHERE id > 200 LIMIT 5;
+                                                             QUERY PLAN
+-------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=10.31..11.42 rows=1 width=140) (actual time=273.966..274.013 rows=5 loops=1)
+   ->  Bitmap Heap Scan on "user"  (cost=10.31..11.42 rows=1 width=140) (actual time=273.965..273.967 rows=5 loops=1)
+         Recheck Cond: (id > 200)
+         Heap Blocks: exact=59246
+         ->  Bitmap Index Scan on user_id_idx  (cost=0.00..10.31 rows=1 width=0) (actual time=138.227..138.228 rows=2785308 loops=1)
+               Index Cond: (id > 200)
+ Planning Time: 1.038 ms
+ Execution Time: 274.290 ms
+(8 строк)
 ```
