@@ -221,3 +221,7 @@ otus=# EXPLAIN ANALYZE SELECT * FROM public.user WHERE id > 200 LIMIT 5;
  Execution Time: 274.290 ms
 (8 строк)
 ```
+#### Реализовать индекс на часть таблицы или индекс на поле с функцией
+```postgresql
+
+```
