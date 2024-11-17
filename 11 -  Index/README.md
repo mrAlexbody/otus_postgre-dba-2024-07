@@ -207,21 +207,97 @@ otus=# EXPLAIN ANALYZE SELECT * FROM public.user WHERE id <= 1000 AND surname = 
  Planning Time: 0.871 ms
  Execution Time: 0.023 ms
 (5 строк)
-                                                        
-otus=# EXPLAIN ANALYZE SELECT * FROM public.user WHERE id > 200 LIMIT 5;
-                                                             QUERY PLAN
--------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=10.31..11.42 rows=1 width=140) (actual time=273.966..274.013 rows=5 loops=1)
-   ->  Bitmap Heap Scan on "user"  (cost=10.31..11.42 rows=1 width=140) (actual time=273.965..273.967 rows=5 loops=1)
-         Recheck Cond: (id > 200)
-         Heap Blocks: exact=59246
-         ->  Bitmap Index Scan on user_id_idx  (cost=0.00..10.31 rows=1 width=0) (actual time=138.227..138.228 rows=2785308 loops=1)
-               Index Cond: (id > 200)
- Planning Time: 1.038 ms
- Execution Time: 274.290 ms
-(8 строк)
+
 ```
 #### Реализовать индекс на часть таблицы или индекс на поле с функцией
 ```postgresql
+postgres=# \l
+                                                       Список баз данных
+    Имя    | Владелец | Кодировка | Провайдер локали | LC_COLLATE  |  LC_CTYPE   | Локаль | Правила ICU |     Права доступа
+-----------+----------+-----------+------------------+-------------+-------------+--------+-------------+-----------------------
+ otus      | postgres | UTF8      | libc             | ru_RU.UTF-8 | ru_RU.UTF-8 |        |             |
+ postgres  | postgres | UTF8      | libc             | ru_RU.UTF-8 | ru_RU.UTF-8 |        |             |
+ template0 | postgres | UTF8      | libc             | ru_RU.UTF-8 | ru_RU.UTF-8 |        |             | =c/postgres          +
+           |          |           |                  |             |             |        |             | postgres=CTc/postgres
+ template1 | postgres | UTF8      | libc             | ru_RU.UTF-8 | ru_RU.UTF-8 |        |             | =c/postgres          +
+           |          |           |                  |             |             |        |             | postgres=CTc/postgres
+(4 строки)
+
+postgres=# \c otus
+psql (17.0 (Ubuntu 17.0-1.pgdg24.04+1), сервер 15.8 (Ubuntu 15.8-1.pgdg24.04+1))
+Вы подключены к базе данных "otus" как пользователь "postgres".
+otus=# \dt
+          Список отношений
+ Схема  | Имя  |   Тип   | Владелец
+--------+------+---------+----------
+ public | user | таблица | postgres
+(1 строка)
+
+otus=# ALTER] TABLE "user" ADD COLUMN active bool DEFAULT 'false' ;
+ALTER TABLE
+otus=# update "user" SET active = 'true' where id < 300;
+UPDATE 200
+otus=# SELECT * FROM "user" WHERE id < 300 LIMIT 5 ;
+ id  |              login               |             surname              |               name               |             lastname             | active
+-----+----------------------------------+----------------------------------+----------------------------------+----------------------------------+--------
+ 100 | adf991ed6106ff182647b8a9dd33620d | da74b734e0ccb0c7affb05ab185e5d88 | ab883df8d58f3c3324c2172d687a378f | dcd5d52541ced5fccf092431231f26fc | t
+ 101 | 89091b64d454e07c974dbcdad17fcefb | 37c0282a355271815431a053061582db | 2074a7bf744ebec28291b13f0124163c | 384b102ec426f48b7f5c323593d74444 | t
+ 102 | 99242e1c2e4bdf72c9c574ff9e58f0e6 | 7bf7851836b084db34a18e7c15a9e903 | 7ef4fd35b1ec0e05c12bd14b975f9549 | d51059a0fd13415bf32462bee95da6fb | t
+ 103 | 6aad079c8fc66acfa67501e77f0aae37 | 373a09eddb796a594d55ea5cd3e711bb | 6d4ce4eacef2cd50a7d6ff0bdb3e24d3 | a2fedc4945604a809e6fc62723d19179 | t
+ 104 | aeb0db5412e47ac90a2bfe7c2359a8b8 | 7692a605302604cb98b1ca8c8cafd2ef | 8c1e9a27d5d39fe01a14575180b99a53 | a2de88a66094aebeda1f1bafe3c2f31b | t
+(5 строк)
+    
+otus=# CREATE INDEX ON "user" ( active ) WHERE active = 'true';
+CREATE INDEX
+otus=# explain analyze select count(*) from "user" where active \gx
+-[ RECORD 1 ]---------------------------------------------------------------------------------------------------------------------------------------
+QUERY PLAN | Aggregate  (cost=503.28..503.29 rows=1 width=8) (actual time=0.060..0.060 rows=1 loops=1)
+-[ RECORD 2 ]---------------------------------------------------------------------------------------------------------------------------------------
+QUERY PLAN |   ->  Index Only Scan using user_active_idx on "user"  (cost=0.15..502.15 rows=450 width=0) (actual time=0.013..0.048 rows=200 loops=1)
+-[ RECORD 3 ]---------------------------------------------------------------------------------------------------------------------------------------
+QUERY PLAN |         Heap Fetches: 200
+-[ RECORD 4 ]---------------------------------------------------------------------------------------------------------------------------------------
+QUERY PLAN | Planning Time: 0.624 ms
+-[ RECORD 5 ]---------------------------------------------------------------------------------------------------------------------------------------
+QUERY PLAN | Execution Time: 0.109 ms
+
+otus=# explain analyze select count(*) from "user" where active='false' ;
+                                                   QUERY PLAN
+----------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=61559.14..61559.15 rows=1 width=8) (actual time=68.508..68.509 rows=1 loops=1)
+   ->  Seq Scan on "user"  (cost=0.00..61558.01 rows=450 width=0) (actual time=68.419..68.484 rows=701 loops=1)
+         Filter: (NOT active)
+         Rows Removed by Filter: 200
+ Planning Time: 0.054 ms
+ Execution Time: 68.571 ms
+(6 строк)
 
 ```
+#### Создать индекс на несколько полей
+```postgresql
+otus=# EXPLAIN ANALYZE SELECT * FROM "user" WHERE name='26b154a71a2c074c813f519512960637' AND active='false';
+                                               QUERY PLAN
+--------------------------------------------------------------------------------------------------------
+ Seq Scan on "user"  (cost=0.00..61560.26 rows=1 width=141) (actual time=59.022..59.100 rows=1 loops=1)
+   Filter: ((NOT active) AND ((name)::text = '26b154a71a2c074c813f519512960637'::text))
+   Rows Removed by Filter: 900
+ Planning Time: 0.113 ms
+ Execution Time: 59.112 ms
+(5 строк)
+otus=# CREATE INDEX ON "user" (name, active);
+CREATE INDEX
+otus=# EXPLAIN ANALYZE SELECT * FROM "user" WHERE name='26b154a71a2c074c813f519512960637' AND active='false';
+                                                         QUERY PLAN
+-----------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on "user"  (cost=1.39..2.50 rows=1 width=141) (actual time=0.015..0.015 rows=1 loops=1)
+   Recheck Cond: ((name)::text = '26b154a71a2c074c813f519512960637'::text)
+   Filter: (NOT active)
+   Heap Blocks: exact=1
+   ->  Bitmap Index Scan on user_name_active_idx  (cost=0.00..1.39 rows=1 width=0) (actual time=0.009..0.009 rows=1 loops=1)
+         Index Cond: (((name)::text = '26b154a71a2c074c813f519512960637'::text) AND (active = false))
+ Planning Time: 0.174 ms
+ Execution Time: 0.030 ms
+(8 строк)
+                                               
+```
+ok!
