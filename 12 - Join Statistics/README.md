@@ -26,3 +26,196 @@
 * Придумайте 3 своих метрики на основе показанных представлений, отправьте их через ЛК, а так же поделитесь с коллегами в слаке
 --- 
 
+#### Реализуем прямое соединение двух и более таблиц;
+**Подключимся к БД и создадми пару таблиц**
+```shell
+ubuntu@db-join:~$ sudo -i -u postgres psql
+[sudo] password for ubuntu:
+psql (17.0 (Ubuntu 17.0-1.pgdg24.04+1), сервер 15.8 (Ubuntu 15.8-1.pgdg24.04+1))
+Введите "help", чтобы получить справку.
+
+postgres=#
+
+```
+```postgresql
+postgres=# CREATE DATABASE joinstat;
+CREATE DATABASE
+postgres=# \l
+                                                       Список баз данных
+    Имя    | Владелец | Кодировка | Провайдер локали | LC_COLLATE  |  LC_CTYPE   | Локаль | Правила ICU |     Права доступа
+-----------+----------+-----------+------------------+-------------+-------------+--------+-------------+-----------------------
+ joinstat  | postgres | UTF8      | libc             | ru_RU.UTF-8 | ru_RU.UTF-8 |        |             |
+ postgres  | postgres | UTF8      | libc             | ru_RU.UTF-8 | ru_RU.UTF-8 |        |             |
+ template0 | postgres | UTF8      | libc             | ru_RU.UTF-8 | ru_RU.UTF-8 |        |             | =c/postgres          +
+           |          |           |                  |             |             |        |             | postgres=CTc/postgres
+ template1 | postgres | UTF8      | libc             | ru_RU.UTF-8 | ru_RU.UTF-8 |        |             | =c/postgres          +
+           |          |           |                  |             |             |        |             | postgres=CTc/postgres
+(4 строки)
+
+postgres=# \c joinstat
+psql (17.0 (Ubuntu 17.0-1.pgdg24.04+1), сервер 15.8 (Ubuntu 15.8-1.pgdg24.04+1))
+Вы подключены к базе данных "joinstat" как пользователь "postgres".
+
+joinstat=# CREATE TABLE bus (id SERIAL, route TEXT, id_model INT, id_driver INT);
+CREATE TABLE
+joinstat=# CREATE TABLE model_bus (id SERIAL, name TEXT);
+CREATE TABLE
+joinstat=# CREATE TABLE driver (id SERIAL, first_name TEXT, second_name TEXT);
+CREATE TABLE
+
+joinstat=# INSERT INTO bus VALUES
+    (1, 'Москва-Болшево', 1, 1),
+    (2, 'Москва-Пушкино', 1, 2),
+    (3, 'Москва-Ярославль', 2, 3),
+    (4, 'Москва-Кострома', 2, 4),
+    (5, 'Москва-Волгорад', 3, 5),
+    (6, 'Москва-Иваново', NULL, NULL);
+INSERT 0 6
+
+joinstat=# INSERT INTO model_bus VALUES
+    (1, 'ПАЗ'),
+    (2, 'ЛИАЗ'),
+    (3, 'MAN'),
+    (4, 'МАЗ'),
+    (5, 'НЕФАЗ');
+INSERT 0 5
+
+joinstat=# INSERT INTO driver VALUES
+    (1, 'Иван', 'Иванов'),
+    (2, 'Петр', 'Петров'),
+    (3, 'Савелий', 'Сидоров'),
+    (4, 'Антон', 'Шторкин'),
+    (5, 'Олег', 'Зажигаев'),
+    (6, 'Аркадий', 'Паровозов');
+INSERT 0 6
+
+joinstat=# SELECT * FROM bus;
+ id |      route       | id_model | id_driver
+----+------------------+----------+-----------
+  1 | Москва-Болшево   |        1 |         1
+  2 | Москва-Пушкино   |        1 |         2
+  3 | Москва-Ярославль |        2 |         3
+  4 | Москва-Кострома  |        2 |         4
+  5 | Москва-Волгорад  |        3 |         5
+  6 | Москва-Иваново   |          |
+(6 строк)
+
+joinstat=# SELECT * FROM model_bus;
+ id | name
+----+-------
+  1 | ПАЗ
+  2 | ЛИАЗ
+  3 | MAN
+  4 | МАЗ
+  5 | НЕФАЗ
+(5 строк)
+
+joinstat=# SELECT * FROM driver;
+ id | first_name | second_name
+----+------------+-------------
+  1 | Иван       | Иванов
+  2 | Петр       | Петров
+  3 | Савелий    | Сидоров
+  4 | Антон      | Шторкин
+  5 | Олег       | Зажигаев
+  6 | Аркадий    | Паровозов
+(6 строк)
+```
+**Сделаем пару запросов:** 
+```postgresql
+joinstat=# SELECT * FROM bus b JOIN model_bus mb ON b.id_model = mb.id;
+ id |      route       | id_model | id_driver | id | name
+----+------------------+----------+-----------+----+------
+  1 | Москва-Болшево   |        1 |         1 |  1 | ПАЗ
+  2 | Москва-Пушкино   |        1 |         2 |  1 | ПАЗ
+  3 | Москва-Ярославль |        2 |         3 |  2 | ЛИАЗ
+  4 | Москва-Кострома  |        2 |         4 |  2 | ЛИАЗ
+  5 | Москва-Волгорад  |        3 |         5 |  3 | MAN
+(5 строк)
+
+joinstat=# SELECT * FROM bus b, model_bus mb WHERE b.id_model = mb.id;
+ id |      route       | id_model | id_driver | id | name
+----+------------------+----------+-----------+----+------
+  1 | Москва-Болшево   |        1 |         1 |  1 | ПАЗ
+  2 | Москва-Пушкино   |        1 |         2 |  1 | ПАЗ
+  3 | Москва-Ярославль |        2 |         3 |  2 | ЛИАЗ
+  4 | Москва-Кострома  |        2 |         4 |  2 | ЛИАЗ
+  5 | Москва-Волгорад  |        3 |         5 |  3 | MAN
+(5 строк)
+
+```
+#### Реализовать левостороннее (или правостороннее) соединение двух или более таблиц;
+```postgresql
+ id |      route       | id_model | id_driver | id | name
+----+------------------+----------+-----------+----+------
+  1 | Москва-Болшево   |        1 |         1 |  1 | ПАЗ
+  2 | Москва-Пушкино   |        1 |         2 |  1 | ПАЗ
+  3 | Москва-Ярославль |        2 |         3 |  2 | ЛИАЗ
+  4 | Москва-Кострома  |        2 |         4 |  2 | ЛИАЗ
+  5 | Москва-Волгорад  |        3 |         5 |  3 | MAN
+  6 | Москва-Иваново   |          |           |    |
+(6 строк)
+
+joinstat=# SELECT * FROM bus b RIGHT JOIN model_bus mb ON b.id_model = mb.id;
+ id |      route       | id_model | id_driver | id | name
+----+------------------+----------+-----------+----+-------
+  1 | Москва-Болшево   |        1 |         1 |  1 | ПАЗ
+  2 | Москва-Пушкино   |        1 |         2 |  1 | ПАЗ
+  3 | Москва-Ярославль |        2 |         3 |  2 | ЛИАЗ
+  4 | Москва-Кострома  |        2 |         4 |  2 | ЛИАЗ
+  5 | Москва-Волгорад  |        3 |         5 |  3 | MAN
+    |                  |          |           |  4 | МАЗ
+    |                  |          |           |  5 | НЕФАЗ
+(7 строк)
+```
+####  Реализовать кросс соединение двух или более таблиц;
+```postgresql
+joinstat=# EXPLAIN SELECT * FROM bus b CROSS JOIN model_bus mb WHERE b.id_model = mb.id;
+                                 QUERY PLAN
+-----------------------------------------------------------------------------
+ Merge Join  (cost=166.78..280.07 rows=7176 width=80)
+   Merge Cond: (b.id_model = mb.id)
+   ->  Sort  (cost=78.60..81.43 rows=1130 width=44)
+         Sort Key: b.id_model
+         ->  Seq Scan on bus b  (cost=0.00..21.30 rows=1130 width=44)
+   ->  Sort  (cost=88.17..91.35 rows=1270 width=36)
+         Sort Key: mb.id
+         ->  Seq Scan on model_bus mb  (cost=0.00..22.70 rows=1270 width=36)
+(8 строк)
+
+joinstat=# SELECT * FROM bus b CROSS JOIN model_bus mb WHERE b.id_model = mb.id;
+ id |      route       | id_model | id_driver | id | name
+----+------------------+----------+-----------+----+------
+  1 | Москва-Болшево   |        1 |         1 |  1 | ПАЗ
+  2 | Москва-Пушкино   |        1 |         2 |  1 | ПАЗ
+  3 | Москва-Ярославль |        2 |         3 |  2 | ЛИАЗ
+  4 | Москва-Кострома  |        2 |         4 |  2 | ЛИАЗ
+  5 | Москва-Волгорад  |        3 |         5 |  3 | MAN
+(5 строк)
+
+```
+#### Реализовать полное соединение двух или более таблиц;
+```postgresql
+joinstat=# SELECT * FROM bus b FULL JOIN model_bus mb ON b.id_model = mb.id;
+ id |      route       | id_model | id_driver | id | name
+----+------------------+----------+-----------+----+-------
+  1 | Москва-Болшево   |        1 |         1 |  1 | ПАЗ
+  2 | Москва-Пушкино   |        1 |         2 |  1 | ПАЗ
+  3 | Москва-Ярославль |        2 |         3 |  2 | ЛИАЗ
+  4 | Москва-Кострома  |        2 |         4 |  2 | ЛИАЗ
+  5 | Москва-Волгорад  |        3 |         5 |  3 | MAN
+  6 | Москва-Иваново   |          |           |    |
+    |                  |          |           |  4 | МАЗ
+    |                  |          |           |  5 | НЕФАЗ
+(8 строк)
+```
+#### Реализовать запрос, в котором будут использованы разные типы соединений
+```postgresql
+joinstat=# SELECT * FROM bus b INNER JOIN driver d ON b.id=d.id RIGHT JOIN model_bus m ON d.id=m.id WHERE b.id=1;
+ id |     route      | id_model | id_driver | id | first_name | second_name | id | name
+----+----------------+----------+-----------+----+------------+-------------+----+------
+  1 | Москва-Болшево |        1 |         1 |  1 | Иван       | Иванов      |  1 | ПАЗ
+(1 строка)
+
+```
+####  THE END
