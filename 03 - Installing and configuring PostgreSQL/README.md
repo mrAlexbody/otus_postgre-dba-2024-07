@@ -38,9 +38,7 @@ postgres=# insert into test values('1');
 copyright: https://github.com/mrAlexbody/otus_postgre-dba-2024-07/blob/main/HW03/README.md
 ### Создание виртуальной машины с UBUNTU 22.04 LTS в YandexCloud
 ```` shell
-PS C:\Users\Alexander> yc compute instance create --name otus-db --hostname otus-db --cores 2 --memory 4 --create-boot-disk size=15G,type=
-network-hdd,image-folder-id=standard-images,image-family=ubuntu-2204-lts --network-interface subnet-name=otus-subnet,nat-ip-version=ipv4 -
--ssh-key C:\Users\Alexander/.ssh/yc_key.pub
+PS C:\Users\Alexander> yc compute instance create --name otus-db --hostname db01 --cores 2 --memory 4 --create-boot-disk size=15G,type=network-hdd,image-folder-id=standard-images,image-family=ubuntu-2204-lts --network-interface subnet-name=otus-subnet,nat-ip-version=ipv4 --ssh-key C:\Users\Alexander/.ssh/yc_key.pub
 ````
 ```shell
 done (35s)
