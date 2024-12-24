@@ -437,7 +437,7 @@ consul3  192.168.0.28:8301  alive   server  1.14.3  2       yc1a  <all>
 [2]-  Done vm_ip_address=$(yc compute instance show --name pgsql$i | grep -E ' +address' | tail -n 1 | awk '{print $2}') && ssh -o StrictHostKeyChecking=no -i ~/.ssh/yc_key yc-user@$vm_ip_address 'sudo consul members'
 [3]+  Done vm_ip_address=$(yc compute instance show --name pgsql$i | grep -E ' +address' | tail -n 1 | awk '{print $2}') && ssh -o StrictHostKeyChecking=no -i ~/.ssh/yc_key yc-user@$vm_ip_address 'sudo consul members'
 ```
-* ### Сайт CONSUL доступен по ссылке <http://51.250.92.84:8500/ui/yc1a/services/consul/instances>
+* ### Сайт CONSUL доступен по ссылке <http://158.160.46.8/ui/yc1a/services>
 
 ## Настройка кластера PostgreSQL на базе Patroni
 * ### Установка PostgreSQL на 3 ВМ и сразу проверим:
@@ -867,7 +867,6 @@ backend consulweb
         server consul01 192.168.0.6:8500 check
         server consul02 192.168.0.11:8500 check
         server consul03 192.168.0.28:8500 check
-
 ```
 * ### Запуск:
 ```shell
@@ -889,3 +888,60 @@ root@hpr01:~# systemctl status haproxy
              ├─2517 /usr/sbin/haproxy -Ws -f /etc/haproxy/haproxy.cfg -p /run/haproxy.pid -S /run/haproxy-master.sock
              └─2520 /usr/sbin/haproxy -Ws -f /etc/haproxy/haproxy.cfg -p /run/haproxy.pid -S /run/haproxy-master.sock
 ```
+# Тестирование кластера
+>> Проверим состояние кластера и вручную переключим 
+```shell
+root@pgsql1:~# patronictl -c /etc/patroni.yml switchover
+Current cluster topology
++ Cluster: patroni (7451367085296931935) -----+----+-----------+
+| Member | Host         | Role    | State     | TL | Lag in MB |
++--------+--------------+---------+-----------+----+-----------+
+| pgsql1 | 192.168.0.6  | Replica | streaming |  1 |         0 |
+| pgsql2 | 192.168.0.11 | Replica | streaming |  1 |         0 |
+| pgsql3 | 192.168.0.28 | Leader  | running   |  1 |           |
++--------+--------------+---------+-----------+----+-----------+
+Primary [pgsql3]:
+Candidate ['pgsql1', 'pgsql2'] []:
+When should the switchover take place (e.g. 2024-12-24T11:20 )  [now]:
+Are you sure you want to switchover cluster patroni, demoting current leader pgsql3? [y/N]: y
+2024-12-24 10:21:14.39661 Successfully switched over to "pgsql1"
++ Cluster: patroni (7451367085296931935) ---+----+-----------+
+| Member | Host         | Role    | State   | TL | Lag in MB |
++--------+--------------+---------+---------+----+-----------+
+| pgsql1 | 192.168.0.6  | Leader  | running |  1 |           |
+| pgsql2 | 192.168.0.11 | Replica | running |  1 |         0 |
+| pgsql3 | 192.168.0.28 | Replica | stopped |    |   unknown |
++--------+--------------+---------+---------+----+-----------+
+root@pgsql1:~# patronictl -c /etc/patroni.yml list
++ Cluster: patroni (7451367085296931935) -----+----+-----------+
+| Member | Host         | Role    | State     | TL | Lag in MB |
++--------+--------------+---------+-----------+----+-----------+
+| pgsql1 | 192.168.0.6  | Leader  | running   |  2 |           |
+| pgsql2 | 192.168.0.11 | Replica | streaming |  2 |         0 |
+| pgsql3 | 192.168.0.28 | Replica | streaming |  2 |         0 |
++--------+--------------+---------+-----------+----+-----------+
+
+```
+>> Остоновим одну ноду pgsql01 (Master) кластера:
+```shell
+root@pgsql3:~# patronictl -c /etc/patroni.yml list
++ Cluster: patroni (7451367085296931935) -----+----+-----------+
+| Member | Host         | Role    | State     | TL | Lag in MB |
++--------+--------------+---------+-----------+----+-----------+
+| pgsql2 | 192.168.0.11 | Leader  | running   |  3 |           |
+| pgsql3 | 192.168.0.28 | Replica | streaming |  3 |         0 |
++--------+--------------+---------+-----------+----+-----------+
+```
+>> Запустим обратно ноду pgsql01 кластера и проверим:
+```shell
+root@pgsql3:~# patronictl -c /etc/patroni.yml list
++ Cluster: patroni (7451367085296931935) -----+----+-----------+
+| Member | Host         | Role    | State     | TL | Lag in MB |
++--------+--------------+---------+-----------+----+-----------+
+| pgsql1 | 192.168.0.6  | Replica | streaming |  3 |         0 |
+| pgsql2 | 192.168.0.11 | Leader  | running   |  3 |           |
+| pgsql3 | 192.168.0.28 | Replica | streaming |  3 |         0 |
++--------+--------------+---------+-----------+----+-----------+
+```
+
+
