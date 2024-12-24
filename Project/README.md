@@ -943,5 +943,75 @@ root@pgsql3:~# patronictl -c /etc/patroni.yml list
 | pgsql3 | 192.168.0.28 | Replica | streaming |  3 |         0 |
 +--------+--------------+---------+-----------+----+-----------+
 ```
+>> Создадим БД на ноде pgsql2 (Master):
+```shell
+yc-user@pgsql2:~$ psql -h 127.0.0.1 -U postgres
+psql (14.15 (Ubuntu 14.15-1.pgdg20.04+1))
+Type "help" for help.
 
+postgres=# \l
+                                  List of databases
+   Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
+-----------+----------+----------+-------------+-------------+-----------------------
+ postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+ template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ test      | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+(4 rows)
+
+postgres=# CREATE DATABASE testdb;
+CREATE DATABASE
+postgres=# \l
+                                  List of databases
+   Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
+-----------+----------+----------+-------------+-------------+-----------------------
+ postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+ template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ test      | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+ testdb    | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+(5 rows)
+```
+>> На pgsql1:
+```shell
+root@pgsql1:~# psql -h 127.0.0.1 -U postgres
+psql (14.15 (Ubuntu 14.15-1.pgdg20.04+1))
+Type "help" for help.
+
+postgres=# \l
+                                  List of databases
+   Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
+-----------+----------+----------+-------------+-------------+-----------------------
+ postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+ template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ test      | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+ testdb    | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+(5 rows)
+```
+>> На pgsql3:
+```shell
+root@pgsql3:~# psql -h 127.0.0.1 -U postgres
+psql (14.15 (Ubuntu 14.15-1.pgdg20.04+1))
+Type "help" for help.
+
+postgres=# \l
+                                  List of databases
+   Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
+-----------+----------+----------+-------------+-------------+-----------------------
+ postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+ template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ test      | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+ testdb    | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+(5 rows)
+```
 
