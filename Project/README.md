@@ -1,4 +1,6 @@
-
+# Тема «Cоздание и тестирование высоконагруженного отказоустойчивого кластера PostgreSQL на базе Patroni»
+## Схема сети:
+![network_diagram.jpg](network_diagram.jpg)
 ## Создаем сетевую инфраструктуру:
 ````shell
 supervisor@LAPTOP:~$ yc vpc network create --name otus-net --description "otus-net"
@@ -528,13 +530,13 @@ postgresql:
   authentication:
     replication:
       username: replicator
-      password: rep-pass_321
+      password: <password>
     superuser:
       username: postgres
-      password: zalando_321
+      password: <password>
     rewind:  
       username: rewind_user
-      password: rewind_password_321
+      password: <password>
   parameters:
     unix_socket_directories: '.'
 tags:
@@ -590,13 +592,13 @@ postgresql:
   authentication:
     replication:
       username: replicator
-      password: rep-pass_321
+      password: **********
     superuser:
       username: postgres
-      password: zalando_321
+      password: **********
     rewind:
       username: rewind_user
-      password: rewind_password_321
+      password: **********
   parameters:
     unix_socket_directories: .
 tags:
@@ -647,13 +649,13 @@ postgresql:
   authentication:
     replication:
       username: replicator
-      password: rep-pass_321
+      password: **********
     superuser:
       username: postgres
-      password: zalando_321
+      password: **********
     rewind:
       username: rewind_user
-      password: rewind_password_321
+      password: **********
   parameters:
     unix_socket_directories: .
 tags:
@@ -704,13 +706,13 @@ postgresql:
   authentication:
     replication:
       username: replicator
-      password: rep-pass_321
+      password: **********
     superuser:
       username: postgres
-      password: zalando_321
+      password: **********
     rewind:
       username: rewind_user
-      password: rewind_password_321
+      password: **********
   parameters:
     unix_socket_directories: .
 tags:
@@ -777,4 +779,113 @@ supervisor@LAPTOP:~$ for i in {1..3}; do vm_ip_address=$(yc compute instance sho
 [1]   Done vm_ip_address=$(yc compute instance show --name pgsql$i | grep -E ' +address' | tail -n 1 | awk '{print $2}') && ssh -o StrictHostKeyChecking=no -i ~/.ssh/yc_key yc-user@$vm_ip_address 'sudo patronictl -c /etc/patroni.yml list'
 [2]-  Done vm_ip_address=$(yc compute instance show --name pgsql$i | grep -E ' +address' | tail -n 1 | awk '{print $2}') && ssh -o StrictHostKeyChecking=no -i ~/.ssh/yc_key yc-user@$vm_ip_address 'sudo patronictl -c /etc/patroni.yml list'
 [3]+  Done vm_ip_address=$(yc compute instance show --name pgsql$i | grep -E ' +address' | tail -n 1 | awk '{print $2}') && ssh -o StrictHostKeyChecking=no -i ~/.ssh/yc_key yc-user@$vm_ip_address 'sudo patronictl -c /etc/patroni.yml list'
+```
+## Установка и конфигурация Haproxy
+* ### Установка
+```shell
+a_myskin@LAPTOP-DASh-F15:~$ yc compute instance create --name hpr01 --hostname hpr01 --cores 2 --memory 4 --create-boot-disk size=10G,type=network-hdd,image
+-folder-id=standard-images,image-family=ubuntu-2204-lts --network-interface subnet-name=otus-subnet,nat-ip-version=ipv4 --ssh-key ~/.ssh/yc_key.pub
+done (48s)
+```
+>> зайдём на сервер по ssh и продолжим установку там: 
+```shell
+yc-user@hpr01:~$ sudo apt install -y haproxy
+```
+* ### Создадим конфиг для Haproxy:
+```shell
+root@hpr01:~# cat /etc/haproxy/haproxy.cfg
+global
+        log /dev/log    local0
+        log /dev/log    local1 notice
+        chroot /var/lib/haproxy
+        stats socket /run/haproxy/admin.sock mode 660 level admin expose-fd listeners
+        stats timeout 30s
+        user haproxy
+        group haproxy
+        daemon
+
+        # Default SSL material locations
+        ca-base /etc/ssl/certs
+        crt-base /etc/ssl/private
+
+        # See: https://ssl-config.mozilla.org/#server=haproxy&server-version=2.0.3&config=intermediate
+        ssl-default-bind-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384
+        ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
+        ssl-default-bind-options ssl-min-ver TLSv1.2 no-tls-tickets
+
+defaults
+        log     global
+        mode    http
+        option  httplog
+        option  dontlognull
+        timeout connect 5000
+        timeout client  50000
+        timeout server  50000
+        errorfile 400 /etc/haproxy/errors/400.http
+        errorfile 403 /etc/haproxy/errors/403.http
+        errorfile 408 /etc/haproxy/errors/408.http
+        errorfile 500 /etc/haproxy/errors/500.http
+        errorfile 502 /etc/haproxy/errors/502.http
+        errorfile 503 /etc/haproxy/errors/503.http
+        errorfile 504 /etc/haproxy/errors/504.http
+
+frontend consul
+        bind 0.0.0.0:80
+        mode http
+        default_backend consulweb
+
+listen postgres_write
+        bind 0.0.0.0:5432
+        mode tcp
+        option tcplog
+        option httpchk
+        http-check connect
+        http-check send meth GET uri /master
+        http-check expect status 200
+        default-server inter 1s fall 3 on-marked-down shutdown-sessions on-marked-up shutdown-backup-sessions
+        server pgsql01 192.168.0.6:5432 check port 8008
+        server pgsql02 192.168.0.11:5432 check port 8008
+        server pgsql03 192.168.0.28:5432 check port 8008
+
+listen postgres_read
+        bind 0.0.0.0:5433
+        mode tcp
+        option tcplog
+        option httpchk
+        http-check send meth GET uri /replica
+        http-check expect status 200
+        default-server inter 1s fall 3 on-marked-down shutdown-sessions on-marked-up shutdown-backup-sessions
+        server pgsql01 192.168.0.6:5432 check port 8008
+        server pgsql02 192.168.0.11:5432 check port 8008
+        server pgsql03 192.168.0.28:5432 check port 8008
+
+backend consulweb
+        mode http
+        option httpchk
+        option  forwardfor
+        balance roundrobin
+        server consul01 192.168.0.6:8500 check
+        server consul02 192.168.0.11:8500 check
+        server consul03 192.168.0.28:8500 check
+
+```
+* ### Запуск:
+```shell
+root@hpr01:~# systemctl enable haproxy
+Synchronizing state of haproxy.service with SysV service script with /lib/systemd/systemd-sysv-install.
+Executing: /lib/systemd/systemd-sysv-install enable haproxy
+root@hpr01:~# systemctl start haproxy
+root@hpr01:~# systemctl status haproxy
+● haproxy.service - HAProxy Load Balancer
+     Loaded: loaded (/lib/systemd/system/haproxy.service; enabled; vendor preset: enabled)
+     Active: active (running) since Tue 2024-12-22 03:39:56 UTC; 55min ago
+       Docs: man:haproxy(1)
+             file:/usr/share/doc/haproxy/configuration.txt.gz
+   Main PID: 2517 (haproxy)
+      Tasks: 3 (limit: 4564)
+     Memory: 69.3M
+        CPU: 134ms
+     CGroup: /system.slice/haproxy.service
+             ├─2517 /usr/sbin/haproxy -Ws -f /etc/haproxy/haproxy.cfg -p /run/haproxy.pid -S /run/haproxy-master.sock
+             └─2520 /usr/sbin/haproxy -Ws -f /etc/haproxy/haproxy.cfg -p /run/haproxy.pid -S /run/haproxy-master.sock
 ```
