@@ -976,7 +976,7 @@ postgres=# \l
  testdb    | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
 (5 rows)
 ```
->> На pgsql1:
+>> На pgsql1 (Replica):
 ```shell
 root@pgsql1:~# psql -h 127.0.0.1 -U postgres
 psql (14.15 (Ubuntu 14.15-1.pgdg20.04+1))
@@ -995,7 +995,7 @@ postgres=# \l
  testdb    | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
 (5 rows)
 ```
->> На pgsql3:
+>> На pgsql3 (Replica):
 ```shell
 root@pgsql3:~# psql -h 127.0.0.1 -U postgres
 psql (14.15 (Ubuntu 14.15-1.pgdg20.04+1))
